@@ -1,0 +1,11 @@
+.config
+.config.old
+.map
+build/
+dist/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.log

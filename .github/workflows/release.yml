@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装工具链
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi gcc make python3-pip zip
+          python3 -m pip install --break-system-packages pytest kconfiglib
+      - name: 验证并构建
+        run: |
+          make profiles
+          make hosttest
+          python3 -m pytest -q -p no:cacheprovider
+      - name: 整理发布包
+        run: |
+          mkdir -p dist/c23 dist/c13 dist/c10
+          cp build/c23/bootloader.bin build/c23/bootloader.elf build/c23/bootloader.elf.map dist/c23/
+          cp build/c13/bootloader.bin build/c13/bootloader.elf build/c13/bootloader.elf.map dist/c13/
+          cp build/c10/bootloader.bin build/c10/bootloader.elf build/c10/bootloader.elf.map dist/c10/
+          cp README.md REVERSE_ENGINEERING_STATUS.md LICENSE dist/
+          cd dist
+          sha256sum c23/* c13/* c10/* > SHA256SUMS
+          zip -r ../creality-factory-bootloader-rebuild.zip .
+      - name: 上传工作流产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: |
+            creality-factory-bootloader-rebuild.zip
+            dist/SHA256SUMS
+      - name: 创建 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: true
+          files: |
+            creality-factory-bootloader-rebuild.zip
+            dist/SHA256SUMS

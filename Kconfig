@@ -1,0 +1,42 @@
+mainmenu "创想三维 MCU Bootloader 重建配置"
+
+choice
+    prompt "目标控制板"
+    default BOARD_C23
+
+config BOARD_C23
+    bool "C23 主板（GD32F303，256 KiB Flash，48 KiB RAM）"
+
+config BOARD_C13
+    bool "C13 喷头板（GD32F303，128 KiB Flash，32 KiB RAM）"
+
+config BOARD_C10
+    bool "C10 热床/调平板（GD32E230，64 KiB Flash，8 KiB RAM）"
+
+endchoice
+
+config F303_FLASH_SIZE_KIB
+    int "GD32F303 Flash 容量（KiB）"
+    depends on BOARD_C23 || BOARD_C13
+    range 128 1024
+    default 256 if BOARD_C23
+    default 128 if BOARD_C13
+    help
+      原厂 C23 为 256 KiB，C13 为 128 KiB。仅在移植到已确认的大容量
+      兼容芯片时修改；超过 512 KiB 的地址将使用 FMC bank 1。
+
+config BOOT_WAIT_MS
+    int "上电等待升级握手时间（毫秒）"
+    range 1000 60000
+    default 15000
+    help
+      在应用有效的情况下，Bootloader 等待主机握手的时间。
+      原厂行为约为 15000 毫秒。
+
+config PACKET_TIMEOUT_MS
+    int "命令及数据包接收超时（毫秒）"
+    range 100 5000
+    default 500
+    help
+      等待命令字节、校验字节和升级数据字节的单次接收超时。
+      原厂行为约为 500 毫秒。

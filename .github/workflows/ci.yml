@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装工具链
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi gcc make python3-pip
+          python3 -m pip install --break-system-packages pytest kconfiglib
+      - name: 生成默认配置
+        run: make olddefconfig
+      - name: 编译三个 MCU 配置
+        run: make profiles
+      - name: 运行 C 协议状态机测试
+        run: make hosttest
+      - name: 运行 Python 回归测试
+        run: python3 -m pytest -q -p no:cacheprovider
+      - name: 保存构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootloader-builds
+          path: |
+            build/c23/bootloader.bin
+            build/c23/bootloader.elf
+            build/c23/bootloader.elf.map
+            build/c13/bootloader.bin
+            build/c13/bootloader.elf
+            build/c13/bootloader.elf.map
+            build/c10/bootloader.bin
+            build/c10/bootloader.elf
+            build/c10/bootloader.elf.map
