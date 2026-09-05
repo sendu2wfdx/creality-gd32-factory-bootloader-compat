@@ -1,4 +1,4 @@
-mainmenu "创想三维 MCU Bootloader 重建配置"
+mainmenu "创想三维 MCU Bootloader 兼容实现配置"
 
 choice
     prompt "目标控制板"

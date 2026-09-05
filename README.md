@@ -1,8 +1,8 @@
-# 创想三维 12 KiB MCU Bootloader 净室重建
+# 创想三维 12 KiB MCU Bootloader 兼容实现
 
-本工程依据 Ender-3 V4 C23 机器上三块 MCU 的完整 Flash 备份，以及原厂 Linux 升级工具 `mcu_util`，重建出可编译的 UART Bootloader 源码。协议、关键状态机、时钟、UART 和 Flash 行为经过两侧二进制交叉核对，但不声称恢复了原厂源码，也不追求与原厂 BL 逐字节相同。
+本工程提供可编译的 UART Bootloader 兼容实现。主要用途是在 MCU 的 Bootloader 已丢失或损坏、但硬件仍可通过 SWD 等方式恢复时，重新获得使用创想三维官方 MCU 固件包和官方升级工具进行后续升级的能力。它实现兼容的协议、镜像布局、应用校验、UART 和 Flash 行为，不是原厂源码，也不要求生成的 BL 与原厂二进制逐字节相同。
 
-> **项目状态：逆向研究 / 预发布。** 本项目与深圳市创想三维科技股份有限公司
+> **项目状态：兼容性开发 / 预发布。** 本项目与深圳市创想三维科技股份有限公司
 > 无隶属或背书关系。“Creality/创想三维”仅用于说明兼容目标。
 
 ## 仓库内容
@@ -15,7 +15,7 @@
 ├── Kconfig                      menuconfig 配置定义
 ├── Makefile                     构建、宿主测试和清理入口
 ├── linker.ld                    12 KiB BL 与固定板卡标识布局
-├── REVERSE_ENGINEERING_STATUS.md 证据、置信度与工具链分析
+├── COMPATIBILITY_STATUS.md       兼容范围、验证状态与实现边界
 ├── CONTRIBUTING.md              贡献与硬件报告要求
 └── SECURITY.md                  安全报告和实机风险说明
 ```
@@ -32,7 +32,7 @@
 | C13 | 喷头板 | GD32F303 | 128 KiB | 32 KiB | 2048 字节 | `noz0_110_G30` |
 | C10 | 热床/调平板 | GD32E230 | 64 KiB | 8 KiB | 1024 字节 | `bed0_110_G21` |
 
-三者的 Bootloader 均占用 `0x08000000..0x08002fff`，应用程序从 `0x08003000` 开始。链接器会阻止重建 BL 超过原厂预留的 12 KiB。
+三者的 Bootloader 均占用 `0x08000000..0x08002fff`，应用程序从 `0x08003000` 开始。链接器会阻止兼容 BL 超过预留的 12 KiB。
 
 F303 Flash 后端还保留原厂的双 bank 能力：运行时读取 `0x1ffff7e0`
 容量字；容量超过 512 KiB 且写入地址达到 `0x08080000` 时，自动改用 FMC
@@ -66,7 +66,7 @@ BL 自身的 12 字节板卡/Boot 版本标识固定在 BL 偏移 `0x2f80`（绝
 | `0x20c` | 2 字节 | 小端序 CRC16 |
 | `0x20e` | 4 字节 | 小端序应用长度 |
 
-CRC 使用 CRC-16/CCITT，`poly=0x1021`、`init=0`。计算范围为应用起始位置至声明长度末尾；计算时将 `0x20c..0x211` 六个元数据字节视为零。长度必须至少覆盖这些字段，并且不能超过该 MCU 的应用 Flash 容量。容量上界检查是重建版有意增加的安全加固。
+CRC 使用 CRC-16/CCITT，`poly=0x1021`、`init=0`。计算范围为应用起始位置至声明长度末尾；计算时将 `0x20c..0x211` 六个元数据字节视为零。长度必须至少覆盖这些字段，并且不能超过该 MCU 的应用 Flash 容量。容量上界检查是兼容版有意增加的安全加固。
 
 Hi/V57 系统打包在 `/usr/share/klipper/fw/F009`、`F010`、`F018` 下的
 MCU `.bin` 都是从应用基址加载的纯应用镜像，不包含前面的 12 KiB BL。
@@ -178,7 +178,7 @@ make
 
 | 文件 | 用途 |
 |---|---|
-| `build/configured/bootloader.elf` | 带段信息的 ELF，供反汇编和调试 |
+| `build/configured/bootloader.elf` | 带段信息的 ELF，供调试和故障定位 |
 | `build/configured/bootloader.elf.map` | 链接映射，用于核对符号和空间占用 |
 | `build/configured/bootloader.bin` | 裸 Bootloader 研究镜像 |
 | `build/configured/autoconf.h` | Kconfig 生成的 C 宏 |
@@ -207,11 +207,11 @@ make hosttest
 
 ## 当前边界与安全要求
 
-已经达到的是“依据三份 BL 和升级工具交叉验证、可以编译和静态审查的功能重建”，不是原厂源码恢复，也不是已经完成实机认证的替代 Bootloader。看门狗、复位原因、Flash 错误边界、断电恢复、PCB 实际 UART 走线及异常包精确时序仍需受控硬件试验。
+目前达到的是“可编译、可静态审查，并与三种目标 MCU、官方固件格式和官方升级工具协议兼容”。它不是原厂源码，也尚未完成足以直接称为救砖工具的实机认证。三种现有目标均不要求 Bootloader 处理复位原因或接管看门狗。Flash 错误边界、断电恢复、外设残留状态、PCB 实际 UART 走线及异常包精确时序仍需受控硬件试验。
 
 **不要把这些研究镜像直接刷入打印机。** 必须保留完整 Flash 备份和选项字节。首次硬件试验应使用可牺牲的开发板，或在可靠连接 SWD、确认能够解除读保护并恢复整片 Flash 的条件下进行。
 
-更细的反汇编证据、函数地址和置信度分类见 [`REVERSE_ENGINEERING_STATUS.md`](REVERSE_ENGINEERING_STATUS.md)。
+更细的兼容范围、验证证据和已知边界见 [`COMPATIBILITY_STATUS.md`](COMPATIBILITY_STATUS.md)。
 
 ## 持续集成与发布
 
