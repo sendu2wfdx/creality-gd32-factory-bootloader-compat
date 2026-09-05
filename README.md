@@ -191,6 +191,14 @@ make profiles
 
 对应输出位于 `build/c23/`、`build/c13/`、`build/c10/`。单独构建可使用 `make c23`、`make c13` 或 `make c10`。`make clean` 只删除 `build/`，保留 `.config`。
 
+### 作为 Klipper 子模块构建
+
+`klipper.mk` 是供 Ender-3 V4 Klipper 复刻树使用的薄适配层。将本仓库放在
+Klipper 的 `src/bootloader/` 后，由 Klipper 顶层 Makefile 包含
+`src/bootloader/klipper.mk`。适配层依据 Klipper 已有的主板、喷头板和床板角色，
+分别选择 C23、C13、C10，并随 `make all` 生成 `out/bootloader.elf`、
+`out/bootloader.map` 和 `out/bootloader.bin`。独立构建入口和配置不会因此改变。
+
 运行主机侧回归测试：
 
 ```sh
