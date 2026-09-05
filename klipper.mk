@@ -6,7 +6,7 @@ ifeq ($(CONFIG_BOARD_DIRECTORY),"gd32")
 bootloader_src-y += src/startup.c src/protocol.c src/main.c
 bootloader_dirs-y += bootloader/src
 
-BOOTLOADER_CFLAGS += -Isrc/bootloader/src -ffreestanding -fno-builtin
+BOOTLOADER_CFLAGS += -Isrc/bootloader/src -Os -ffreestanding -fno-builtin
 BOOTLOADER_LINK_FLAGS := -nostdlib -Wl,--gc-sections \
     -Wl,-Map,$(OUT)bootloader.map -T src/bootloader/linker.ld -lgcc
 
